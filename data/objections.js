@@ -12,8 +12,11 @@
 //   probe     optional question-first flow: { ask, answers: [{ label, text }] }
 //   note      optional reminder shown under the rebuttals
 //   forceMode optional: always use this transition, whatever the call type.
+//   custom    true when the rebuttals were written for this tool rather than
+//             copied from the company page (shown with a "New" tag).
 
 window.OBJECTION_GROUPS = [
+  "Tough objections",
   "Common objections",
   "Not ready / going to wait",
   "Can't talk right now",
@@ -21,6 +24,95 @@ window.OBJECTION_GROUPS = [
 ];
 
 window.OBJECTIONS = [
+  // ---------------------------------------------------------------- Tough
+  // Written for this tool, in the same voice as the company page.
+  {
+    id: "not-interested",
+    title: "Just not interested",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["not interested", "interested", "no thanks", "no thank you", "pass", "nope", "good"],
+    probe: {
+      ask: "Totally fair. Just so I can update your file, was it something about the numbers, the timing, or something else?",
+      answers: [
+        { label: "Numbers", text: "That's exactly why I'm calling. Let's get a second set of eyes on that proposal and make sure it makes the most financial sense for you." },
+        { label: "Timing", text: "Not looking to put you on any timeline. Let's just review those details so you have everything you need when you're ready." },
+        { label: "Nothing specific", text: "Fair enough. Then there's no harm in a quick look at the real numbers. If they don't make sense, you've lost nothing." },
+      ],
+    },
+    rebuttals: [
+      { text: "I hear you, and I'm not calling to sell you anything today. You had requested information on solar, so I just want to make sure you actually got real numbers before you close the door on it. If they don't make sense, you've lost nothing." },
+      { text: "Totally understand. Most folks I talk to say the same thing until they see what they'd actually pay compared to their utility bill. Let's at least get you that comparison so you're deciding off real numbers." },
+      { text: "No problem at all. Can I ask, is it that you're not interested in solar, or not interested in another sales call? Because this is just a second set of eyes on what you were already shown." },
+    ],
+  },
+  {
+    id: "send-info",
+    title: "Just send me something / email it to me",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["send", "email", "mail", "brochure", "information", "info", "text me", "look it over"],
+    rebuttals: [
+      { text: "I'd be happy to! The tricky part is that your numbers are specific to your home and your bill, so a generic email won't tell you much. Let me get you with your expert for a few minutes and they'll send over everything that actually applies to you." },
+      { text: "Absolutely. So we send you the right thing, let's have your consultant put your real numbers together with you, and that'll be what lands in your inbox." },
+    ],
+  },
+  {
+    id: "think-about-it",
+    title: "I need to think about it",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["think", "think about it", "consider", "sleep on it", "decide", "mull", "not sure"],
+    rebuttals: [
+      { text: "That makes sense, it's a big decision. What's the main thing you'd want to think through? That way I can make sure your expert covers it." },
+      { text: "Of course. This isn't a decision you need to make today. This step just gets you the full picture so when you do think it over, you're working with real numbers." },
+    ],
+  },
+  {
+    id: "didnt-sign-up",
+    title: "I never signed up for this / how did you get my number?",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["signed up", "never", "number", "how did you get", "didn't request", "who is this", "spam"],
+    rebuttals: [
+      { text: "Great question. It looks like we have a record of you or someone at the home looking into solar with us. I'm just following up to make sure nobody left you hanging. Are you still at [address]?" },
+      { text: "I completely understand being cautious. I see we've been in touch before about your home, so I wanted to make sure you got the information you asked about. If you'd like, I can update your file either way." },
+    ],
+  },
+  {
+    id: "pushy-sales",
+    title: "I don't want a pushy salesperson",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["pushy", "salesman", "salesperson", "sales pitch", "pressure", "in my house", "sold"],
+    rebuttals: [
+      { text: "I totally get that, nobody likes feeling pressured. This is really just a review of your options and your numbers. If it doesn't make sense for you, the consultant will tell you that too." },
+      { text: "Fair enough. You stay in the driver's seat the whole time. You're not committing to anything by looking at the numbers." },
+    ],
+  },
+  {
+    id: "bad-experience",
+    title: "Had a bad experience with the last consultant",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["bad experience", "last consultant", "rude", "didn't like", "previous", "last guy", "last time"],
+    rebuttals: [
+      { text: "I'm really sorry to hear that, and thank you for telling me. That's exactly why I'm calling. Let's get you connected with a different expert so you get the experience you should have had the first time." },
+      { text: "That's not the experience we want for anyone. I'll make a note on your file, and I'll make sure you're with someone new who can take a fresh look at your proposal." },
+    ],
+  },
+  {
+    id: "not-worth-it",
+    title: "Solar isn't worth it / doesn't really save money",
+    group: "Tough objections",
+    custom: true,
+    keywords: ["worth", "save", "savings", "doesn't work", "scam", "payback", "not worth", "myth"],
+    rebuttals: [
+      { text: "That's a fair thing to wonder, and honestly it depends on the home. That's why we look at your actual bill and roof instead of guessing. If the numbers don't save you money, we'll tell you." },
+      { text: "I hear that a lot. Let's put it to the test with your real numbers. Worst case, you'll know for sure and won't have to wonder about it again." },
+    ],
+  },
+
   // ---------------------------------------------------------------- Common
   {
     id: "stop-calling",
