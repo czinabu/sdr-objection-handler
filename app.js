@@ -110,6 +110,7 @@
       b.dataset.id = o.id;
       b.dataset.pos = offset + i;
       b.textContent = o.title;
+      if (o.custom) b.insertAdjacentHTML("beforeend", ' <span class="tag">New</span>');
       if (o.id === state.selectedId) b.classList.add("selected");
       b.addEventListener("click", () => select(o.id));
       wrap.appendChild(b);
@@ -151,6 +152,7 @@
     const otherMode = state.mode === "inside" ? "Field" : "Inside";
 
     let html = `<h2 class="title">${escapeHtml(o.title)}</h2>`;
+    if (o.custom) html += `<p class="sub custom">New rebuttals written for this tool, not from the company page.</p>`;
 
     if (o.note) html += `<p class="callout">${escapeHtml(o.note)}</p>`;
     if (fallback) {
