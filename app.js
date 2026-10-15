@@ -4,20 +4,29 @@
   const OBJECTIONS = window.OBJECTIONS;
   const GROUPS = window.OBJECTION_GROUPS;
   const TRANSITIONS = window.TRANSITIONS;
+  const byId = Object.fromEntries(OBJECTIONS.map((o) => [o.id, o]));
+
+  // Shown as numbered quick picks until the rep changes them with the pin button.
+  const DEFAULT_PINS = [
+    "not-interested", "too-expensive", "spouse", "busy", "already-working",
+    "think-about-it", "stop-calling", "bad-reviews", "not-right-time",
+  ];
+  const MAX_PINS = 9;
 
   const searchEl = document.getElementById("search");
-  const resultsEl = document.getElementById("results");
-  const recentEl = document.getElementById("recent");
+  const listEl = document.getElementById("list");
   const detailEl = document.getElementById("detail");
   const modeButtons = document.querySelectorAll(".mode button");
+  const narrow = window.matchMedia("(max-width: 800px)");
 
   const state = {
     mode: load("mode") || "inside",
     query: "",
-    selectedId: null,
-    cursor: 0, // index into the visible list, for arrow keys
-    visible: [],
-    recent: load("recent") || [],
+    openId: null,   // objection shown in the detail panel
+    cursor: 0,      // highlighted search result
+    matches: [],
+    pins: (load("pins") || DEFAULT_PINS).filter((id) => byId[id]),
+    recent: (load("recent") || []).filter((id) => byId[id]),
   };
 
   // ------------------------------------------------------------ storage
@@ -33,7 +42,6 @@
     return s.toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
   }
 
-  // Precompute searchable text once.
   const index = OBJECTIONS.map((o) => ({
     o,
     title: normalize(o.title),
@@ -56,7 +64,7 @@
 
   function search(query) {
     const q = normalize(query);
-    if (!q) return null;
+    if (!q) return [];
     const words = q.split(" ");
     return index
       .map((e) => ({ o: e.o, s: score(e, q, words) }))
@@ -65,7 +73,7 @@
       .map((r) => r.o);
   }
 
-  // ------------------------------------------------------------- render
+  // ------------------------------------------------------------ helpers
   function escapeHtml(s) {
     return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
@@ -74,90 +82,86 @@
     return escapeHtml(s).replace(/\[([^\]]+)\]/g, '<mark class="blank">$1</mark>');
   }
 
-  function renderList() {
-    const hits = search(state.query);
-    resultsEl.innerHTML = "";
+  // ------------------------------------------------------------- list
+  function row(o, opts) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "row";
+    b.dataset.id = o.id;
+    if (o.id === state.openId) b.classList.add("open");
+    if (opts && opts.cursor) b.classList.add("cursor");
+    let html = "";
+    if (opts && opts.key) html += `<kbd class="num">${opts.key}</kbd>`;
+    html += `<span class="row-title">${escapeHtml(o.title)}</span>`;
+    if (o.custom) html += `<span class="tag">New</span>`;
+    b.innerHTML = html;
+    b.addEventListener("click", () => open(o.id, true));
+    return b;
+  }
 
-    if (hits) {
-      state.visible = hits;
-      if (!hits.length) {
-        resultsEl.innerHTML = '<p class="muted none">No match. Try another word, or clear with Esc.</p>';
+  function section(title, items, opts) {
+    if (!items.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "section";
+    const h = document.createElement("h2");
+    h.textContent = title;
+    wrap.appendChild(h);
+    items.forEach((o, i) => wrap.appendChild(row(o, opts && opts(o, i))));
+    listEl.appendChild(wrap);
+  }
+
+  function renderList() {
+    listEl.innerHTML = "";
+
+    if (state.query) {
+      if (!state.matches.length) {
+        listEl.innerHTML = '<p class="none">No match. Try another word, or press Esc to clear.</p>';
         return;
       }
-      resultsEl.appendChild(buttonsFor(hits, 0));
-    } else {
-      state.visible = [];
-      for (const g of GROUPS) {
-        const items = OBJECTIONS.filter((o) => o.group === g);
-        const h = document.createElement("h2");
-        h.textContent = g;
-        resultsEl.appendChild(h);
-        resultsEl.appendChild(buttonsFor(items, state.visible.length));
-        state.visible.push(...items);
-      }
+      section("Matches", state.matches, (o, i) => ({ cursor: i === state.cursor }));
+      return;
     }
-    state.cursor = Math.min(state.cursor, state.visible.length - 1);
-    markCursor();
+
+    section("Quick picks", state.pins.map((id) => byId[id]), (o, i) => ({ key: i + 1 }));
+    const recent = state.recent.filter((id) => !state.pins.includes(id)).map((id) => byId[id]);
+    section("Recent", recent);
+    for (const g of GROUPS) section(g, OBJECTIONS.filter((o) => o.group === g));
   }
 
-  function buttonsFor(items, offset) {
-    const wrap = document.createElement("div");
-    wrap.className = "chips";
-    items.forEach((o, i) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip";
-      b.dataset.id = o.id;
-      b.dataset.pos = offset + i;
-      b.textContent = o.title;
-      if (o.custom) b.insertAdjacentHTML("beforeend", ' <span class="tag">New</span>');
-      if (o.id === state.selectedId) b.classList.add("selected");
-      b.addEventListener("click", () => select(o.id));
-      wrap.appendChild(b);
-    });
-    return wrap;
-  }
-
-  function markCursor() {
-    resultsEl.querySelectorAll(".chip").forEach((b) => {
-      b.classList.toggle("cursor", state.query !== "" && Number(b.dataset.pos) === state.cursor);
-    });
-  }
-
-  function renderRecent() {
-    const items = state.recent.map((id) => OBJECTIONS.find((o) => o.id === id)).filter(Boolean);
-    recentEl.hidden = items.length === 0;
-    recentEl.innerHTML = "";
-    if (!items.length) return;
-    const h = document.createElement("h2");
-    h.textContent = "Recent";
-    recentEl.appendChild(h);
-    const wrap = buttonsFor(items, -1000);
-    wrap.classList.add("small");
-    recentEl.appendChild(wrap);
-  }
-
+  // ------------------------------------------------------------- detail
   function rebuttalsFor(o, mode) {
     const fits = o.rebuttals.filter((r) => !r.mode || r.mode === mode);
-    if (fits.length) return { list: fits, fallback: false };
-    return { list: o.rebuttals, fallback: true };
+    return fits.length ? { list: fits, fallback: false } : { list: o.rebuttals, fallback: true };
+  }
+
+  function renderEmpty() {
+    const t = TRANSITIONS[state.mode];
+    detailEl.innerHTML = `
+      <div class="empty">
+        <p class="empty-lead">Type what the homeowner said, or press a quick-pick number.</p>
+        <p class="muted">You're on ${state.mode === "inside" ? "an <strong>Inside (Rehash)</strong>" : "a <strong>Field</strong>"} call. Every card ends with this close:</p>
+        <div class="transition ${state.mode}">
+          <p class="label">${escapeHtml(t.label)}</p>
+          <p class="line">${script(t.close)}</p>
+        </div>
+      </div>`;
   }
 
   function renderDetail() {
-    const o = OBJECTIONS.find((x) => x.id === state.selectedId);
-    if (!o) return;
+    const o = byId[state.openId];
+    if (!o) return renderEmpty();
     const mode = o.forceMode || state.mode;
     const t = TRANSITIONS[mode];
     const { list, fallback } = rebuttalsFor(o, state.mode);
+    const pinned = state.pins.includes(o.id);
     const otherMode = state.mode === "inside" ? "Field" : "Inside";
 
-    let html = `<h2 class="title">${escapeHtml(o.title)}</h2>`;
-    if (o.custom) html += `<p class="sub custom">New rebuttals written for this tool, not from the company page.</p>`;
-
+    let html = `<button type="button" class="back ghost">← All objections</button>`;
+    html += `<div class="detail-head"><h2 class="title">${escapeHtml(o.title)}</h2>`;
+    html += `<button type="button" class="pin ghost" aria-pressed="${pinned}">${pinned ? "★ Pinned" : "☆ Pin"}</button></div>`;
+    if (o.custom) html += `<p class="sub">Written for this tool, not from the company page.</p>`;
     if (o.note) html += `<p class="callout">${escapeHtml(o.note)}</p>`;
-    if (fallback) {
-      html += `<p class="callout">This one is written for ${otherMode} calls. Adapt the wording, or switch the call type.</p>`;
-    }
+    if (fallback) html += `<p class="callout">Written for ${otherMode} calls. Adapt the wording, or switch the call type.</p>`;
 
     if (o.probe) {
       html += `<div class="probe"><p class="label">Ask first</p><p class="ask">${escapeHtml(o.probe.ask)}</p><div class="answers">`;
@@ -167,7 +171,6 @@
       html += `</div><div class="probe-out"></div></div>`;
     }
 
-    html += `<div class="rebuttals">`;
     list.forEach((r, i) => {
       html += `<blockquote class="${i === 0 ? "primary" : "alt"}">`;
       html += `<p class="label">${i === 0 ? "Say this" : "Or try"}</p>`;
@@ -175,13 +178,10 @@
       if (r.note) html += `<p class="coach">${escapeHtml(r.note)}</p>`;
       html += `</blockquote>`;
     });
-    html += `</div>`;
 
     html += `<div class="transition ${mode}">`;
-    html += `<p class="label">Then transition · ${escapeHtml(t.label)}</p>`;
-    if (o.forceMode && o.forceMode !== state.mode) {
-      html += `<p class="coach">Warm transfer this one even on a Field call.</p>`;
-    }
+    html += `<p class="label">Then · ${escapeHtml(t.label)}</p>`;
+    if (o.forceMode && o.forceMode !== state.mode) html += `<p class="coach">Warm transfer this one even on a Field call.</p>`;
     html += `<p class="line">${script(t.close)}</p>`;
     if (t.confirm) html += `<p class="sub">When they pick a time:</p><p class="line small">${script(t.confirm)}</p>`;
     html += `<details><summary>Assumptive transitions</summary><ul>`;
@@ -189,7 +189,10 @@
     html += `</ul></details></div>`;
 
     detailEl.innerHTML = html;
+    detailEl.scrollTop = 0;
 
+    detailEl.querySelector(".back").addEventListener("click", showList);
+    detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
     detailEl.querySelectorAll(".answer").forEach((b) => {
       b.addEventListener("click", () => {
         const a = o.probe.answers[Number(b.dataset.i)];
@@ -206,17 +209,54 @@
   }
 
   // ------------------------------------------------------------ actions
-  function select(id) {
-    state.selectedId = id;
-    state.recent = [id, ...state.recent.filter((x) => x !== id)].slice(0, 5);
-    save("recent", state.recent);
-    renderList();
-    renderRecent();
-    renderDetail();
-    // On narrow screens the detail sits under the list; bring it into view.
-    if (window.matchMedia("(max-width: 800px)").matches) {
-      detailEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  // keep: true when the rep committed to this objection (click, Enter, number key).
+  function open(id, keep) {
+    state.openId = id;
+    if (keep) {
+      state.recent = [id, ...state.recent.filter((x) => x !== id)].slice(0, 5);
+      save("recent", state.recent);
+      if (narrow.matches) {
+        document.body.dataset.view = "detail";
+        window.scrollTo(0, 0);
+      }
     }
+    renderList();
+    renderDetail();
+  }
+
+  function showList() {
+    document.body.dataset.view = "list";
+    searchEl.focus();
+  }
+
+  function togglePin(id) {
+    if (state.pins.includes(id)) state.pins = state.pins.filter((x) => x !== id);
+    else if (state.pins.length < MAX_PINS) state.pins = [...state.pins, id];
+    else state.pins = [...state.pins.slice(0, MAX_PINS - 1), id];
+    save("pins", state.pins);
+    renderList();
+    renderDetail();
+  }
+
+  function setQuery(q) {
+    state.query = q;
+    state.matches = search(q);
+    state.cursor = 0;
+    // Preview the best match right away on wide screens, so Enter is optional.
+    if (state.matches.length && !narrow.matches) state.openId = state.matches[0].id;
+    renderList();
+    renderDetail();
+  }
+
+  function newCall() {
+    searchEl.value = "";
+    state.query = "";
+    state.matches = [];
+    state.openId = null;
+    document.body.dataset.view = "list";
+    renderList();
+    renderDetail();
+    searchEl.focus();
   }
 
   function setMode(mode) {
@@ -227,40 +267,65 @@
   }
 
   modeButtons.forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  document.getElementById("new-call").addEventListener("click", newCall);
 
   searchEl.addEventListener("input", () => {
-    state.query = searchEl.value;
-    state.cursor = 0;
-    renderList();
+    if (narrow.matches) document.body.dataset.view = "list";
+    setQuery(searchEl.value);
   });
 
+  function quickPick(key) {
+    const id = state.pins[Number(key) - 1];
+    if (id) open(id, true);
+    return Boolean(id);
+  }
+  const isDigitKey = (e) => /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey;
+
   searchEl.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    // A digit typed into an empty search box opens that quick pick.
+    if (!searchEl.value && isDigitKey(e)) {
+      if (quickPick(e.key)) e.preventDefault();
+      return;
+    }
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && state.query) {
       e.preventDefault();
-      if (!state.query) return;
-      const n = state.visible.length;
+      const n = state.matches.length;
       if (!n) return;
       state.cursor = (state.cursor + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
-      markCursor();
-    } else if (e.key === "Enter") {
-      const o = state.visible[state.query ? state.cursor : -1];
-      if (o) select(o.id);
-    } else if (e.key === "Escape") {
-      searchEl.value = "";
-      state.query = "";
+      state.openId = state.matches[state.cursor].id;
       renderList();
+      renderDetail();
+    } else if (e.key === "Enter") {
+      const o = state.query ? state.matches[state.cursor] : null;
+      if (o) {
+        open(o.id, true);
+        searchEl.select(); // next keystroke starts a fresh search
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      if (searchEl.value) {
+        searchEl.value = "";
+        setQuery("");
+      } else {
+        newCall();
+      }
     }
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "/" && document.activeElement !== searchEl) {
+    if (e.target === searchEl) return;
+    if (e.key === "/") {
       e.preventDefault();
       searchEl.focus();
       searchEl.select();
+    } else if (e.key === "Escape") {
+      showList();
+    } else if (isDigitKey(e)) {
+      quickPick(e.key);
     }
   });
 
   renderMode();
-  renderRecent();
   renderList();
+  renderDetail();
 })();
