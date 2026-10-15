@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Objection Handler</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Objection Handler</h1>
+    <div class="mode" role="radiogroup" aria-label="Call type">
+      <button type="button" role="radio" data-mode="inside" aria-checked="true">Inside <span>Rehash · transfer</span></button>
+      <button type="button" role="radio" data-mode="field" aria-checked="false">Field <span>set appointment</span></button>
+    </div>
+  </header>
+
+  <div class="searchbar">
+    <input id="search" type="search" placeholder="Type what they said… (spouse, expensive, HOA)" autocomplete="off" spellcheck="false" autofocus>
+    <p class="keys"><kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open · <kbd>Esc</kbd> clear · <kbd>/</kbd> search</p>
+  </div>
+
+  <main class="layout">
+    <nav class="list" aria-label="Objections">
+      <div id="recent" class="recent" hidden></div>
+      <div id="results"></div>
+    </nav>
+    <section id="detail" class="detail" aria-live="polite">
+      <div class="empty">
+        <p>Pick the objection you just heard.</p>
+        <p class="muted">Set the call type up top first. The transition at the bottom follows it.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="data/objections.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
