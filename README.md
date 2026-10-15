@@ -6,14 +6,17 @@ A one-screen helper for handling objections live on a call. Type a word from wha
 
 Open `index.html` in a browser. There is nothing to install, and it works offline.
 
-1. Pick the call type up top: **Inside** (Rehash, warm transfer) or **Field** (set an appointment).
-2. Type what they said, like `spouse`, `expensive`, `HOA` or `busy`, then press **Enter**. You can also tap an objection from the list.
-3. Read the **Say this** line. There are alternates under **Or try**.
-4. Read the **Then transition** script at the bottom. Yellow highlights are blanks to fill in.
+1. Pick the call type up top: **Inside** (Rehash, warm transfer) or **Field** (set an appointment). Every card's closing script follows it.
+2. Start typing what they said, like `spouse`, `price`, `HOA` or `busy`. The best match opens as you type, so you don't need to press anything.
+3. Or press **1–9** to jump straight to a quick pick. Pin your own with the **☆ Pin** button on any card.
+4. Read **Say this**, then the transition, which stays in view at the bottom of the card. Yellow highlights are blanks to fill in.
+5. Press **Esc** to clear the search, and **Esc** again (or **New call**) to reset for the next call.
 
-Keyboard: `/` jumps to search, `↑` `↓` move through matches, `Enter` opens one, `Esc` clears.
+Keyboard: `1`–`9` quick picks, `↑` `↓` move through matches, `Enter` keeps the card open and readies the next search, `Esc` clears, `/` jumps to search.
 
-The last five objections you opened stay under **Recent**, and the call type you picked is remembered.
+On a phone, tap an objection to open it full screen and use **← All objections** to go back.
+
+Your call type, pins and the last five objections you opened are remembered in this browser.
 
 ## Edit the scripts
 
