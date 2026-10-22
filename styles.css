@@ -15,6 +15,8 @@
   --warn-text: #7a5300;
   --blank: #ffec99;
   --on-mode: #ffffff;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
   --radius: 10px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -36,6 +38,8 @@
     --warn-text: #f1cd7c;
     --blank: #5c4c00;
     --on-mode: #0e1014;
+    --danger: #ff8a7a;
+    --danger-soft: #3a1714;
     color-scheme: dark;
   }
 }
@@ -54,6 +58,8 @@
   --warn-text: #f1cd7c;
   --blank: #5c4c00;
   --on-mode: #0e1014;
+  --danger: #ff8a7a;
+  --danger-soft: #3a1714;
   color-scheme: dark;
 }
 
@@ -291,11 +297,74 @@ kbd {
   background: var(--surface);
 }
 
+/* ----------------------------------------------------------- editor */
+.head-actions { display: flex; gap: 6px; flex: none; }
+.ghost.small { padding: 4px 10px; font-size: 13px; }
+.list-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.phone-only { display: none; }
+.ghost.danger { color: var(--danger); }
+.ghost.danger.armed, .ghost.armed { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.ghost:disabled { opacity: 0.45; cursor: default; }
+.primary-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 18px;
+  background: var(--mode);
+  color: var(--on-mode);
+  font-weight: 650;
+  cursor: pointer;
+}
+.small { font-size: 13px; }
+
+.form { display: grid; gap: 12px; }
+.form label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.form input, .form textarea, .form select, .manage-block textarea {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  min-width: 0;
+}
+.form textarea, .manage-block textarea { resize: vertical; line-height: 1.45; }
+.form input:focus, .form textarea:focus, .form select:focus, .manage-block textarea:focus {
+  outline: none;
+  border-color: var(--mode);
+  background: var(--surface);
+}
+.hint { font-weight: 400; color: var(--muted); }
+fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 0; display: grid; gap: 10px; min-width: 0; }
+legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
+.rebuttal-edit { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+.rebuttal-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rebuttal-meta select { width: auto; flex: none; }
+.rebuttal-meta input { flex: 1 1 180px; }
+#add-rebuttal { justify-self: start; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.form-error { margin: 0; color: var(--danger); font-size: 14px; font-weight: 600; }
+.saved { color: var(--field); font-weight: 600; font-size: 14px; }
+
+.manage-block { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+.manage-block h3 { margin: 0; font-size: 16px; }
+.manage-block input[type="file"] { font-size: 14px; max-width: 100%; }
+
 /* ----------------------------------------------------------- phones */
 @media (max-width: 800px) {
   html, body { height: auto; }
   body { display: block; }
-  .topbar-inner h1 { font-size: 15px; }
+  .topbar-inner { gap: 8px; }
+  .topbar-inner h1 { display: none; }
+  .mode { margin-right: auto; }
+  .mode button { padding: 6px 10px; }
+  .mode button span { display: none; }
+  .topbar-inner .ghost { padding: 6px 10px; }
+  #manage { display: none; }
+  .phone-only { display: inline-block; }
   .layout { display: block; }
   .list, .detail { overflow: visible; }
   .detail > .transition { position: static; margin-bottom: 0; box-shadow: none; }
@@ -304,6 +373,7 @@ kbd {
   .back { display: inline-block; }
   .row { padding: 12px 10px; font-size: 16px; }
   .num { display: none; }
+  .two { grid-template-columns: 1fr; }
   .keys { display: none; }
   #search::placeholder { font-size: 15px; }
 }

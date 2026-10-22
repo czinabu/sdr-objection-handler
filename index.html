@@ -11,13 +11,14 @@
     <div class="topbar-inner">
       <h1>Objection Handler</h1>
       <div class="mode" role="radiogroup" aria-label="Call type">
-        <button type="button" role="radio" data-mode="inside" aria-checked="true">Inside <span>Rehash · transfer</span></button>
-        <button type="button" role="radio" data-mode="field" aria-checked="false">Field <span>appointment</span></button>
+        <button type="button" role="radio" data-mode="inside" aria-checked="true">Transfer</button>
+        <button type="button" role="radio" data-mode="field" aria-checked="false">Appointment</button>
       </div>
       <button type="button" id="new-call" class="ghost" title="Clear everything for the next call (Esc twice)">New call</button>
+      <button type="button" id="manage" class="ghost" title="Add, edit, import or export objections">Manage</button>
     </div>
     <div class="searchbar">
-      <input id="search" type="search" placeholder="Type what they said… spouse, price, busy" autocomplete="off" spellcheck="false" autofocus aria-label="Search objections">
+      <input id="search" type="search" placeholder="Type what they said… price, busy, think about it" autocomplete="off" spellcheck="false" autofocus aria-label="Search objections">
     </div>
   </header>
 
@@ -34,7 +35,7 @@
     <span><kbd>/</kbd> search</span>
   </footer>
 
-  <script src="data/objections.js"></script>
+  <script src="data/demo.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
