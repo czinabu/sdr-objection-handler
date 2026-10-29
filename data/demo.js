@@ -14,6 +14,8 @@
 //     rebuttals  list of { text, mode?, note? }; mode is "inside" or "field",
 //                leave it off when the line works for both
 //     probe      optional question-first flow: { ask, answers: [{ label, text, coach? }] }
+//     cue        optional one line to glance at instead of the full rebuttal;
+//                if left off, the first sentence of the rebuttal is used
 //     note       optional reminder shown above the rebuttals
 //     forceMode  optional: always use this call type's close
 //   transitions  closing scripts per mode: { label, close, confirm?, assumptive: [] }
@@ -34,6 +36,7 @@ window.DEMO_LIBRARY = {
       id: "not-interested",
       title: "Just not interested",
       group: "Brush-offs",
+      cue: "Not asking for a decision, just a quick look at real numbers.",
       keywords: ["not interested", "interested", "no thanks", "no thank you", "pass", "nope", "im good"],
       probe: {
         ask: "Totally fair. So I can note your file, is it the cost, the timing, or something else?",
@@ -52,6 +55,7 @@ window.DEMO_LIBRARY = {
       id: "send-info",
       title: "Just send me something",
       group: "Brush-offs",
+      cue: "Generic info won't fit them. Two minutes on their details, then it lands in their inbox.",
       keywords: ["send", "email", "mail", "brochure", "info", "information", "text me", "website"],
       rebuttals: [
         { text: "Happy to. The catch is that anything generic won't tell you much, because the details depend on your situation. Let me get you with a specialist for a few minutes, and what they send will actually apply to you." },
@@ -62,6 +66,7 @@ window.DEMO_LIBRARY = {
       id: "busy",
       title: "I'm busy / can't talk right now",
       group: "Brush-offs",
+      cue: "Keep it to thirty seconds, then the close.",
       keywords: ["busy", "working", "cant talk", "driving", "bad time", "call back", "meeting", "at work"],
       rebuttals: [
         { text: "Understood, I'll be quick. Let me get the specialist on the line to start the conversation, and they can follow up when it suits you better.", mode: "inside" },
@@ -72,6 +77,7 @@ window.DEMO_LIBRARY = {
       id: "how-did-you-get-my-number",
       title: "How did you get my number?",
       group: "Brush-offs",
+      cue: "They asked before. Confirm the address, offer to update their file.",
       keywords: ["number", "how did you get", "never signed up", "didnt request", "who is this", "spam", "list"],
       rebuttals: [
         { text: "Good question. It looks like you or someone at this address asked us about this before. I'm just following up so nobody was left hanging. Are you still at [address]?" },
@@ -84,6 +90,7 @@ window.DEMO_LIBRARY = {
       id: "too-expensive",
       title: "Too expensive",
       group: "Price and value",
+      cue: "Price is the first thing the specialist reviews. More options than they expect.",
       keywords: ["expensive", "price", "cost", "money", "afford", "pricey", "budget", "payment"],
       rebuttals: [
         { text: "That's exactly why I'm calling. If the numbers you saw didn't work, let's get a second set of eyes on them and see what actually fits your budget." },
@@ -94,6 +101,7 @@ window.DEMO_LIBRARY = {
       id: "not-worth-it",
       title: "It's not worth it",
       group: "Price and value",
+      cue: "Test it with real numbers. Worst case, they know for sure.",
       keywords: ["worth", "value", "doesnt work", "waste", "payback", "savings", "pointless"],
       rebuttals: [
         { text: "That really depends on the situation, which is why we look at yours instead of guessing. If it isn't worth it for you, the specialist will tell you." },
@@ -104,6 +112,7 @@ window.DEMO_LIBRARY = {
       id: "competitor",
       title: "Going with another company",
       group: "Price and value",
+      cue: "Comparing is smart. Get a second option to line up side by side.",
       keywords: ["competitor", "another company", "other company", "went with", "signed", "someone else", "quote"],
       rebuttals: [
         { text: "Great, it's smart to compare. Let's get you a second option in hand so you can line them up side by side before you commit." },
@@ -115,6 +124,7 @@ window.DEMO_LIBRARY = {
       id: "think-about-it",
       title: "I need to think about it",
       group: "Timing",
+      cue: "Ask what they'd want to think through. Real numbers make thinking easier.",
       keywords: ["think", "think about it", "consider", "sleep on it", "decide", "not sure", "mull"],
       rebuttals: [
         { text: "Of course. What's the main thing you'd want to think through? I'll make sure the specialist covers it." },
@@ -125,6 +135,7 @@ window.DEMO_LIBRARY = {
       id: "not-right-time",
       title: "Not the right time",
       group: "Timing",
+      cue: "No timeline. Get the details ready for when the time is right.",
       keywords: ["time", "timing", "later", "wait", "next year", "holidays", "not ready", "few months"],
       rebuttals: [
         { text: "No timeline from us at all. Let's just go over the details now so you have everything ready when the time is right." },
@@ -137,6 +148,7 @@ window.DEMO_LIBRARY = {
       id: "partner",
       title: "Need to talk to my spouse / partner",
       group: "Decision makers",
+      cue: "Joint decision. Get real numbers in front of both of them.",
       keywords: ["spouse", "wife", "husband", "partner", "talk to", "other half", "family"],
       probe: {
         ask: "Have they seen any numbers yet?",
@@ -154,6 +166,7 @@ window.DEMO_LIBRARY = {
       id: "not-decision-maker",
       title: "I'm not the one who decides",
       group: "Decision makers",
+      cue: "Fine. Go over it with them, and the specialist loops in the decider.",
       keywords: ["not my decision", "decision maker", "owner", "not the owner", "boss", "landlord", "parents"],
       rebuttals: [
         { text: "No problem. We can go over it with you, and the specialist can loop in whoever makes the call." },
@@ -165,6 +178,7 @@ window.DEMO_LIBRARY = {
       id: "bad-reviews",
       title: "I've heard bad things / bad reviews",
       group: "Trust",
+      cue: "Fair concern. This is information only, no commitment.",
       keywords: ["reviews", "bad", "heard", "online", "reputation", "scam", "complaints"],
       rebuttals: [
         { text: "That's a fair concern with any company. Most customers have a good experience, and when someone doesn't, we work to make it right." },
@@ -175,6 +189,7 @@ window.DEMO_LIBRARY = {
       id: "pushy-sales",
       title: "I don't want a sales pitch",
       group: "Trust",
+      cue: "No pressure. It's a review of options, and they stay in control.",
       keywords: ["pushy", "pitch", "salesman", "salesperson", "pressure", "sold", "hard sell"],
       rebuttals: [
         { text: "Totally get it, nobody likes pressure. This is a review of your options, and if it doesn't make sense, the specialist will say so." },
@@ -185,6 +200,7 @@ window.DEMO_LIBRARY = {
       id: "already-working",
       title: "Already working with someone",
       group: "Trust",
+      cue: "Good to hear. Get their rep back, or someone on the team.",
       keywords: ["already", "working with", "rep", "consultant", "someone", "have a guy"],
       rebuttals: [
         { text: "Good to hear. Let me try to get them back on the line, and if they're tied up, I'll connect you with someone on their team.", mode: "inside" },

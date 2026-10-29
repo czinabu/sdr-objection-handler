@@ -16,6 +16,15 @@ Open `index.html` in a browser. There's nothing to install, and it works offline
 
 Keyboard: `1`–`9` quick picks, `↑` `↓` move through matches, `Enter` keeps the card open and readies the next search, `Esc` clears, `/` jumps to search.
 
+Speed shortcuts for reps who know the script:
+
+- **Type anywhere.** Press any letter and it goes straight into the search box.
+- **`Alt` + `1`–`9`** opens the numbered match while you're typing, so a search plus one keystroke gets you there.
+- **`Alt` + `V`** (or the **Full / Cue / Close** buttons) changes how much a card shows. **Cue** is a one-line reminder plus the close. **Close** is just the closing script, in large type. Your choice is remembered.
+- **`Alt` + `T`** switches the call type.
+
+A card's cue comes from its optional **One-line cue** field. If that's blank, the first sentence of the rebuttal is used.
+
 On a phone, tap an objection to open it full screen, then use **← All objections** to go back.
 
 ## Make it yours
