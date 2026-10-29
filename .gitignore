@@ -1,0 +1,22 @@
+# Private objection sets (company wording) - load these from Manage -> Load a set
+private/
+my-objections*.json
+*.private.json
+uploads/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs, scratch, local tooling
+*.log
+.env
+.env.*
+node_modules/
+tmp/
+*.tmp

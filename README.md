@@ -40,8 +40,13 @@ Your edits, pins, recent cards, call type and call log are saved in this browser
 
 ### Keeping a private set private
 
-If your objections come from your employer's training material, don't commit them to this repo. Keep them in a saved file on your own computer and load it with **Manage → Load a set**. That way the public code only ever contains the demo set.
+If your objections come from your employer's training material, don't commit them to this repo. Keep them in a saved file on your own computer and load it with **Manage → Load a set**. That way the public code only ever contains the demo set. The `.gitignore` already skips a `private/` folder and `my-objections*.json`, so a saved set kept in the project folder won't be committed by accident.
+
+## Layout
+
+- `index.html`: the page. Scripts are `defer`red so the page paints before they run.
+- `src/styles.css`, `src/app.js`, `src/demo.js`: styles, app logic and the demo set.
 
 ## Change the demo set
 
-The demo set lives in [`data/demo.js`](data/demo.js). The comment at the top of that file explains each field. A saved file uses the same shape, as JSON.
+The demo set lives in [`src/demo.js`](src/demo.js). The comment at the top of that file explains each field. A saved file uses the same shape, as JSON.
