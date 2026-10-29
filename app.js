@@ -7,11 +7,14 @@
     "think-about-it", "not-right-time", "competitor", "how-did-you-get-my-number",
   ];
   const MODES = ["inside", "field"];
+  const DEPTHS = ["full", "cue", "close"];
+  const DEPTH_NAMES = { full: "Full", cue: "Cue", close: "Close" };
 
   const searchEl = document.getElementById("search");
   const listEl = document.getElementById("list");
   const detailEl = document.getElementById("detail");
   const modeButtons = document.querySelectorAll(".mode button");
+  const depthButtons = document.querySelectorAll(".depth button");
   const narrow = window.matchMedia("(max-width: 800px)");
 
   // ------------------------------------------------------------ storage
@@ -72,6 +75,7 @@
         rebuttals,
       };
       if (str(o.note)) item.note = str(o.note);
+      if (str(o.cue)) item.cue = str(o.cue);
       if (MODES.includes(o.forceMode)) item.forceMode = o.forceMode;
       if (o.custom) item.custom = true;
       if (o.probe && str(o.probe.ask) && Array.isArray(o.probe.answers)) {
@@ -107,13 +111,16 @@
   const state = {
     lib: loadLibrary(),
     mode: load("mode") || "inside",
+    depth: DEPTHS.includes(load("depth")) ? load("depth") : "full", // how much of a card to show
     query: "",
     openId: null,   // objection shown in the detail panel
-    panel: "card",  // "card", "edit" or "manage"
+    panel: "card",  // "card", "edit", "manage" or "stats"
+    used: 0,        // index of the rebuttal the rep said, among those shown
     cursor: 0,
     matches: [],
     pins: [],
     recent: (load("recent") || []),
+    calls: Array.isArray(load("calls")) ? load("calls") : [],
   };
   let byId = {};
   let index = [];
@@ -132,6 +139,7 @@
     state.pins = pins.slice(0, MAX_PINS);
     state.recent = state.recent.filter((id) => byId[id]);
     if (state.openId && !byId[state.openId]) state.openId = null;
+    state.used = 0;
     if (state.query) state.matches = search(state.query);
   }
 
@@ -181,6 +189,13 @@
     return escapeHtml(s).replace(/\[([^\]]+)\]/g, '<mark class="blank">$1</mark>');
   }
   const modeName = (m) => state.lib.modes[m].name;
+  // The one-liner for cue view: the card's own cue, else the opening sentence of the rebuttal.
+  function cueFor(o, rebuttal) {
+    if (o.cue) return o.cue;
+    const text = rebuttal.text.replace(/\s+/g, " ");
+    const first = (text.match(/^.*?[.!?](?=\s|$)/) || [text])[0];
+    return first.length > 110 ? first.slice(0, 107).replace(/\s+\S*$/, "") + "…" : first;
+  }
 
   // Destructive buttons ask for a second click instead of a dialog.
   function confirmClick(button, label, action) {
@@ -234,7 +249,7 @@
         listEl.appendChild(addButton());
         return;
       }
-      section("Matches", state.matches, (o, i) => ({ cursor: i === state.cursor }));
+      section("Matches", state.matches, (o, i) => ({ cursor: i === state.cursor, key: i < MAX_PINS ? "⌥" + (i + 1) : null }));
       return;
     }
 
@@ -272,6 +287,7 @@
   function renderDetail() {
     if (state.panel === "edit") return renderEditor();
     if (state.panel === "manage") return renderManage();
+    if (state.panel === "stats") return renderStats();
     const o = byId[state.openId];
     if (!o) return renderEmpty();
 
@@ -285,7 +301,24 @@
     html += `<div class="detail-head"><h2 class="title">${escapeHtml(o.title)}</h2>`;
     html += `<div class="head-actions"><button type="button" class="pin ghost" aria-pressed="${pinned}">${pinned ? "★ Pinned" : "☆ Pin"}</button>`;
     html += `<button type="button" class="edit ghost">Edit</button></div></div>`;
+    if (state.depth === "close") {
+      detailEl.innerHTML = html + transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, false));
+      detailEl.scrollTop = 0;
+      wireBack();
+      wireHead(o);
+      wireOutcome(o, list, mode);
+      return;
+    }
     if (o.custom) html += `<p class="sub">Your own wording, not from the official script.</p>`;
+    if (state.depth === "cue") {
+      html += `<blockquote class="primary"><p class="label">Cue</p><p class="line">${script(cueFor(o, list[0]))}</p></blockquote>`;
+      detailEl.innerHTML = html + transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, false));
+      detailEl.scrollTop = 0;
+      wireBack();
+      wireHead(o);
+      wireOutcome(o, list, mode);
+      return;
+    }
     if (o.note) html += `<p class="callout">${escapeHtml(o.note)}</p>`;
     if (!fits.length) html += `<p class="callout">Written for ${escapeHtml(modeName(otherMode))} calls. Adapt the wording, or switch the call type.</p>`;
 
@@ -298,20 +331,24 @@
     }
 
     list.forEach((r, i) => {
-      html += `<blockquote class="${i === 0 ? "primary" : "alt"}">`;
+      html += `<blockquote class="${i === 0 ? "primary" : "alt"}${i === state.used ? " used" : ""}" data-i="${i}">`;
       html += `<p class="label">${i === 0 ? "Say this" : "Or try"}</p>`;
       html += `<p class="line">${script(r.text)}</p>`;
       if (r.note) html += `<p class="coach">${escapeHtml(r.note)}</p>`;
       html += `</blockquote>`;
     });
 
-    html += transitionBlock(mode, o.forceMode && o.forceMode !== state.mode);
+    html += transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, list.length > 1));
 
     detailEl.innerHTML = html;
     detailEl.scrollTop = 0;
     wireBack();
-    detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
-    detailEl.querySelector(".edit").addEventListener("click", () => openEditor(o.id));
+    wireHead(o);
+    wireOutcome(o, list, mode);
+    detailEl.querySelectorAll("blockquote").forEach((q) => q.addEventListener("click", () => {
+      state.used = Number(q.dataset.i);
+      detailEl.querySelectorAll("blockquote").forEach((x) => x.classList.toggle("used", x === q));
+    }));
     detailEl.querySelectorAll(".answer").forEach((b) => {
       b.addEventListener("click", () => {
         const a = o.probe.answers[Number(b.dataset.i)];
@@ -322,9 +359,20 @@
     });
   }
 
-  function transitionBlock(mode, forced) {
+  function wireHead(o) {
+    detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
+    detailEl.querySelector(".edit").addEventListener("click", () => openEditor(o.id));
+  }
+
+  function wireOutcome(o, list, mode) {
+    detailEl.querySelectorAll(".outcome button").forEach((b) => b.addEventListener("click", () => {
+      logCall(o, list[state.used] || list[0], mode, b.dataset.out);
+    }));
+  }
+
+  function transitionBlock(mode, forced, extra) {
     const t = state.lib.transitions[mode];
-    if (!t.close && !t.assumptive.length) return "";
+    if (!t.close && !t.assumptive.length) return `<div class="transition ${mode}">${extra || ""}</div>`;
     let html = `<div class="transition ${mode}">`;
     html += `<p class="label">Then · ${escapeHtml(t.label)}</p>`;
     if (forced) html += `<p class="coach">Use the ${escapeHtml(modeName(mode))} close for this one, whatever the call type.</p>`;
@@ -335,7 +383,7 @@
       for (const a of t.assumptive) html += `<li>${script(a)}</li>`;
       html += `</ul></details>`;
     }
-    return html + `</div>`;
+    return html + (extra || "") + `</div>`;
   }
 
   function renderEmpty() {
@@ -379,6 +427,7 @@
       <label>Section<input id="f-group" list="groups" value="${escapeHtml(d.group)}"></label>
       <datalist id="groups">${state.lib.groups.map((g) => `<option value="${escapeHtml(g)}">`).join("")}</datalist>
       <label>Search words <span class="hint">comma separated</span><input id="f-keywords" value="${escapeHtml(d.keywords.join(", "))}" placeholder="think, consider, decide"></label>
+      <label>One-line cue <span class="hint">optional, shown in Cue view. Leave blank to use the start of the first rebuttal.</span><input id="f-cue" value="${escapeHtml(d.cue || "")}" maxlength="140"></label>
       <label>Reminder <span class="hint">optional, shown above the rebuttals</span><input id="f-note" value="${escapeHtml(d.note || "")}"></label>
       <fieldset><legend>Rebuttals <span class="hint">the first one is "Say this". Use [brackets] for blanks.</span></legend>`;
     d.rebuttals.forEach((r, i) => {
@@ -430,6 +479,7 @@
     draft.group = v("f-group").trim() || "Other";
     draft.keywords = v("f-keywords").split(",").map((s) => s.trim()).filter(Boolean);
     draft.note = v("f-note").trim();
+    draft.cue = v("f-cue").trim();
     draft.rebuttals = draft.rebuttals.map((r, i) => {
       const out = { text: v("f-r-" + i).trim() };
       const mode = v("f-rm-" + i);
@@ -450,6 +500,7 @@
     const item = clone(draft);
     item.rebuttals = item.rebuttals.filter((r) => r.text);
     if (!item.note) delete item.note;
+    if (!item.cue) delete item.cue;
     const lib = state.lib;
     if (item.id) {
       lib.objections = lib.objections.map((o) => (o.id === item.id ? item : o));
@@ -619,6 +670,134 @@
     commitLibrary();
   }
 
+
+  // -------------------------------------------------------- call outcomes
+  // One tap after a call logs the objection, the rebuttal said, and how it
+  // ended. The log stays in this browser only, newest last, capped at MAX_CALLS.
+  const MAX_CALLS = 2000;
+  const WINS = { inside: "Transferred", field: "Booked" };
+  const OUTCOME_LABEL = { won: "Won", lost: "Lost" };
+  let toastTimer = 0;
+
+  function outcomeBar(mode, several) {
+    return `<div class="outcome" role="group" aria-label="Log how the call ended">
+      <p class="label">How did it end?${several ? ` <span class="hint">Tap the line you said if it wasn't the first.</span>` : ""}</p>
+      <div class="outcome-btns">
+        <button type="button" class="win" data-out="won">${escapeHtml(WINS[mode])}</button>
+        <button type="button" class="lose" data-out="lost">Lost</button>
+      </div></div>`;
+  }
+
+  function logCall(o, r, mode, out) {
+    const entry = { t: Date.now(), id: o.id, title: o.title, line: r ? r.text.slice(0, 80) : "", mode, out };
+    state.calls = [...state.calls, entry].slice(-MAX_CALLS);
+    save("calls", state.calls);
+    newCall();
+    showToast(`${out === "won" ? WINS[mode] : "Lost"} · ${o.title}`, () => {
+      state.calls = state.calls.filter((c) => c !== entry);
+      save("calls", state.calls);
+      if (state.panel === "stats") renderDetail();
+    });
+  }
+
+  function showToast(text, undo) {
+    let el = document.getElementById("toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<span></span>`;
+    el.firstChild.textContent = "Logged: " + text;
+    const u = document.createElement("button");
+    u.type = "button";
+    u.textContent = "Undo";
+    u.addEventListener("click", () => { undo(); el.hidden = true; });
+    el.appendChild(u);
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+
+  const pct = (w, n) => (n ? Math.round((100 * w) / n) + "%" : "–");
+
+  function tally(calls, keyOf) {
+    const m = new Map();
+    for (const c of calls) {
+      const k = keyOf(c);
+      const e = m.get(k) || { n: 0, w: 0, c };
+      e.n++;
+      if (c.out === "won") e.w++;
+      m.set(k, e);
+    }
+    return [...m.values()];
+  }
+
+  function renderStats() {
+    const calls = state.calls;
+    let html = backButton() + `<h2 class="title">Call outcomes</h2>`;
+    if (!calls.length) {
+      detailEl.innerHTML = html + `<p class="muted">Nothing logged yet. After a call, tap how it ended at the bottom of the card and it shows up here. Logs are saved in this browser only.</p>`;
+      return wireBack();
+    }
+    const wins = calls.filter((c) => c.out === "won").length;
+    html += `<p class="muted">${calls.length} call${calls.length === 1 ? "" : "s"} logged, ${wins} won (${pct(wins, calls.length)}). Saved in this browser only.</p>`;
+
+    const byObj = tally(calls, (c) => c.id).sort((a, b) => b.n - a.n).slice(0, 10);
+    html += `<section class="manage-block"><h3>Top objections</h3><table class="stats"><thead><tr><th>Objection</th><th>Heard</th><th>Won</th></tr></thead><tbody>`;
+    for (const e of byObj) html += `<tr><td>${escapeHtml(byId[e.c.id] ? byId[e.c.id].title : e.c.title)}</td><td>${e.n}</td><td>${pct(e.w, e.n)}</td></tr>`;
+    html += `</tbody></table></section>`;
+
+    // Only lines used at least twice on an objection are ranked against each other.
+    const lines = tally(calls, (c) => c.id + "\u0000" + c.line).filter((e) => e.n >= 2 && e.c.line)
+      .sort((a, b) => b.w / b.n - a.w / a.n || b.n - a.n).slice(0, 10);
+    html += `<section class="manage-block"><h3>Which rebuttals convert</h3>`;
+    if (!lines.length) html += `<p class="sub">Needs a line used on at least two calls before it shows a rate.</p>`;
+    else {
+      html += `<table class="stats"><thead><tr><th>Rebuttal</th><th>Used</th><th>Won</th></tr></thead><tbody>`;
+      for (const e of lines) {
+        const title = byId[e.c.id] ? byId[e.c.id].title : e.c.title;
+        html += `<tr><td><strong>${escapeHtml(title)}</strong><br><span class="sub">${escapeHtml(e.c.line)}…</span></td><td>${e.n}</td><td>${pct(e.w, e.n)}</td></tr>`;
+      }
+      html += `</tbody></table>`;
+    }
+    html += `</section>`;
+
+    html += `<section class="manage-block"><h3>Your log</h3><div class="form-actions">
+      <button type="button" class="ghost" id="calls-csv">Save as CSV</button>
+      <button type="button" class="ghost danger" id="calls-clear">Clear log</button></div></section>`;
+    detailEl.innerHTML = html;
+    detailEl.scrollTop = 0;
+    wireBack();
+    detailEl.querySelector("#calls-csv").addEventListener("click", () => {
+      const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+      const rows = ["time,objection,rebuttal,call type,outcome", ...calls.map((c) =>
+        [new Date(c.t).toISOString(), q(c.title), q(c.line), q((state.lib.modes[c.mode] || {}).name || c.mode), c.out].join(","))];
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
+      a.download = "call-outcomes.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    const clear = detailEl.querySelector("#calls-clear");
+    confirmClick(clear, "Really clear?", () => {
+      state.calls = [];
+      remove("calls");
+      renderStats();
+    });
+  }
+
+  function openStats() {
+    state.panel = "stats";
+    if (narrow.matches) {
+      document.body.dataset.view = "detail";
+      window.scrollTo(0, 0);
+    }
+    renderList();
+    renderDetail();
+  }
+
   // ------------------------------------------------------------- chrome
   function renderMode() {
     modeButtons.forEach((b) => {
@@ -629,9 +808,15 @@
     document.body.dataset.mode = state.mode;
   }
 
+  function renderDepth() {
+    depthButtons.forEach((b) => b.setAttribute("aria-checked", String(b.dataset.depth === state.depth)));
+    document.body.dataset.depth = state.depth;
+  }
+
   // ------------------------------------------------------------ actions
   // keep: true when the rep committed to this objection (click, Enter, number key).
   function open(id, keep) {
+    if (id !== state.openId) state.used = 0;
     state.openId = id;
     state.panel = "card";
     if (keep) {
@@ -692,7 +877,15 @@
     if (state.panel === "card") renderDetail();
   }
 
+  function setDepth(depth) {
+    state.depth = depth;
+    save("depth", depth);
+    renderDepth();
+    if (state.panel === "card") renderDetail();
+  }
+
   modeButtons.forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  depthButtons.forEach((b) => b.addEventListener("click", () => setDepth(b.dataset.depth)));
   document.getElementById("new-call").addEventListener("click", newCall);
   function openManage() {
     state.panel = "manage";
@@ -704,6 +897,7 @@
     renderDetail();
   }
   document.getElementById("manage").addEventListener("click", openManage);
+  document.getElementById("stats").addEventListener("click", openStats);
 
   searchEl.addEventListener("input", () => {
     if (narrow.matches) document.body.dataset.view = "list";
@@ -718,7 +912,22 @@
   const isDigitKey = (e) => /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey;
   const typingInForm = (el) => el && el !== searchEl && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
 
+  // Alt shortcuts work from anywhere, including the search box. They use the physical
+  // key (e.code) because Alt+letter types a different character on a Mac.
+  function altShortcut(e) {
+    if (!e.altKey || e.ctrlKey || e.metaKey) return false;
+    if (e.code === "KeyV") setDepth(DEPTHS[(DEPTHS.indexOf(state.depth) + 1) % DEPTHS.length]);
+    else if (e.code === "KeyT") setMode(state.mode === "inside" ? "field" : "inside");
+    else if (state.query && /^Digit[1-9]$/.test(e.code) && state.matches[Number(e.code.slice(5)) - 1]) {
+      open(state.matches[Number(e.code.slice(5)) - 1].id, true);
+      searchEl.select();
+    } else return false;
+    e.preventDefault();
+    return true;
+  }
+
   searchEl.addEventListener("keydown", (e) => {
+    if (altShortcut(e)) return;
     // A digit typed into an empty search box opens that quick pick.
     if (!searchEl.value && isDigitKey(e)) {
       if (quickPick(e.key)) e.preventDefault();
@@ -751,7 +960,15 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.target === searchEl || typingInForm(e.target)) return;
+    if (e.target === searchEl) return;
+    if (altShortcut(e)) return;
+    if (typingInForm(e.target)) return;
+    // Type anywhere: a letter on the card view starts a search, no need to click first.
+    if (state.panel === "card" && e.key.length === 1 && /[^\s/\d]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      searchEl.focus();
+      searchEl.select();
+      return; // the keystroke lands in the search box
+    }
     if (e.key === "/") {
       e.preventDefault();
       searchEl.focus();
@@ -765,6 +982,7 @@
 
   rebuild();
   renderMode();
+  renderDepth();
   renderList();
   renderDetail();
 })();

@@ -126,6 +126,22 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 .mode button[data-mode="field"][aria-checked="true"] { background: var(--field); color: var(--on-mode); }
 .mode button[aria-checked="true"] span { color: inherit; opacity: 0.85; }
 
+.depth { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.depth button {
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.depth button[aria-checked="true"] { background: var(--text); color: var(--surface); }
+
+/* Close view: the close is the whole card, so make it big. */
+body[data-depth="close"] .detail > .transition .line { font-size: 24px; }
+body[data-depth="close"] .detail > .transition { position: static; margin-bottom: 0; box-shadow: none; }
+body[data-depth="cue"] .detail > .transition { position: static; margin-bottom: 0; box-shadow: none; }
+
 #search {
   width: 100%;
   font: inherit;
@@ -353,6 +369,47 @@ legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
 .manage-block h3 { margin: 0; font-size: 16px; }
 .manage-block input[type="file"] { font-size: 14px; max-width: 100%; }
 
+
+/* ---------------------------------------------------- call outcomes */
+blockquote { cursor: pointer; }
+blockquote.used:not(:only-of-type) { outline: 2px solid var(--mode); outline-offset: 2px; }
+.outcome { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.outcome .label .hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.outcome-btns { display: flex; gap: 8px; margin-top: 6px; }
+.outcome-btns button {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--tmode);
+}
+.outcome-btns .win { background: var(--tmode); color: var(--on-mode); }
+.outcome-btns .lose { background: var(--surface); color: var(--text); border-color: var(--border); }
+.outcome-btns .lose:hover { border-color: var(--danger); color: var(--danger); }
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+}
+#toast[hidden] { display: none; }
+#toast button { border: 0; background: none; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+table.stats { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.stats th, table.stats td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.stats th:not(:first-child), table.stats td:not(:first-child) { width: 56px; text-align: right; }
+
 /* ----------------------------------------------------------- phones */
 @media (max-width: 800px) {
   html, body { height: auto; }
@@ -360,6 +417,7 @@ legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
   .topbar-inner { gap: 8px; }
   .topbar-inner h1 { display: none; }
   .mode { margin-right: auto; }
+  .depth button { padding: 6px 8px; }
   .mode button { padding: 6px 10px; }
   .mode button span { display: none; }
   .topbar-inner .ghost { padding: 6px 10px; }

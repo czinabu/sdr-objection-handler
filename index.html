@@ -14,7 +14,13 @@
         <button type="button" role="radio" data-mode="inside" aria-checked="true">Transfer</button>
         <button type="button" role="radio" data-mode="field" aria-checked="false">Appointment</button>
       </div>
+      <div class="depth" role="radiogroup" aria-label="How much to show">
+        <button type="button" role="radio" data-depth="full" aria-checked="true" title="Whole rebuttal and close">Full</button>
+        <button type="button" role="radio" data-depth="cue" aria-checked="false" title="One-line cue and close">Cue</button>
+        <button type="button" role="radio" data-depth="close" aria-checked="false" title="Just the close">Close</button>
+      </div>
       <button type="button" id="new-call" class="ghost" title="Clear everything for the next call (Esc twice)">New call</button>
+      <button type="button" id="stats" class="ghost" title="See which objections and rebuttals lead to wins">Stats</button>
       <button type="button" id="manage" class="ghost" title="Add, edit, import or export objections">Manage</button>
     </div>
     <div class="searchbar">
@@ -33,6 +39,9 @@
     <span><kbd>Enter</kbd> keep open</span>
     <span><kbd>Esc</kbd> clear · twice for new call</span>
     <span><kbd>/</kbd> search</span>
+    <span><kbd>Alt</kbd><kbd>1</kbd>–<kbd>9</kbd> pick a match</span>
+    <span><kbd>Alt</kbd><kbd>V</kbd> full · cue · close</span>
+    <span><kbd>Alt</kbd><kbd>T</kbd> call type</span>
   </footer>
 
   <script src="data/demo.js"></script>

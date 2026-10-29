@@ -15,6 +15,17 @@ Open `index.html` in a browser. There's nothing to install, and it works offline
 5. Press **Esc** to clear the search. Press **Esc** again, or **New call**, to reset for the next call.
 
 Keyboard: `1`–`9` quick picks, `↑` `↓` move through matches, `Enter` keeps the card open and readies the next search, `Esc` clears, `/` jumps to search.
+6. After the call, tap **Transferred** (or **Booked**) or **Lost** under the close. It's one tap, and it resets for the next call. If you said an alternate line, tap it first so the log credits that one. **Undo** appears for a few seconds.
+7. Open **Stats** to see your most common objections and which rebuttals lead to wins. Rebuttal rates appear once a line has been used twice. You can save the log as a CSV or clear it.
+
+Speed shortcuts for reps who know the script:
+
+- **Type anywhere.** Press any letter and it goes straight into the search box.
+- **`Alt` + `1`–`9`** opens the numbered match while you're typing, so a search plus one keystroke gets you there.
+- **`Alt` + `V`** (or the **Full / Cue / Close** buttons) changes how much a card shows. **Cue** is a one-line reminder plus the close. **Close** is just the closing script, in large type. Your choice is remembered.
+- **`Alt` + `T`** switches the call type.
+
+A card's cue comes from its optional **One-line cue** field. If that's blank, the first sentence of the rebuttal is used.
 
 On a phone, tap an objection to open it full screen, then use **← All objections** to go back.
 
@@ -25,7 +36,7 @@ On a phone, tap an objection to open it full screen, then use **← All objectio
 - **Rename call types and closes:** open **Manage**, then go to **Call types and closing scripts**.
 - **Back up or move your set:** open **Manage**, then use **Copy as text** or **Save as file**. To load a set, use **Load a set**. **Reset to demo set** puts the demo back.
 
-Your edits, pins, recent cards and call type are saved in this browser only. Nothing is uploaded.
+Your edits, pins, recent cards, call type and call log are saved in this browser only. Nothing is uploaded.
 
 ### Keeping a private set private
 
