@@ -109,11 +109,13 @@
     mode: load("mode") || "inside",
     query: "",
     openId: null,   // objection shown in the detail panel
-    panel: "card",  // "card", "edit" or "manage"
+    panel: "card",  // "card", "edit", "manage" or "stats"
+    used: 0,        // index of the rebuttal the rep said, among those shown
     cursor: 0,
     matches: [],
     pins: [],
     recent: (load("recent") || []),
+    calls: Array.isArray(load("calls")) ? load("calls") : [],
   };
   let byId = {};
   let index = [];
@@ -132,6 +134,7 @@
     state.pins = pins.slice(0, MAX_PINS);
     state.recent = state.recent.filter((id) => byId[id]);
     if (state.openId && !byId[state.openId]) state.openId = null;
+    state.used = 0;
     if (state.query) state.matches = search(state.query);
   }
 
@@ -272,6 +275,7 @@
   function renderDetail() {
     if (state.panel === "edit") return renderEditor();
     if (state.panel === "manage") return renderManage();
+    if (state.panel === "stats") return renderStats();
     const o = byId[state.openId];
     if (!o) return renderEmpty();
 
@@ -298,18 +302,25 @@
     }
 
     list.forEach((r, i) => {
-      html += `<blockquote class="${i === 0 ? "primary" : "alt"}">`;
+      html += `<blockquote class="${i === 0 ? "primary" : "alt"}${i === state.used ? " used" : ""}" data-i="${i}">`;
       html += `<p class="label">${i === 0 ? "Say this" : "Or try"}</p>`;
       html += `<p class="line">${script(r.text)}</p>`;
       if (r.note) html += `<p class="coach">${escapeHtml(r.note)}</p>`;
       html += `</blockquote>`;
     });
 
-    html += transitionBlock(mode, o.forceMode && o.forceMode !== state.mode);
+    html += transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, list.length > 1));
 
     detailEl.innerHTML = html;
     detailEl.scrollTop = 0;
     wireBack();
+    detailEl.querySelectorAll("blockquote").forEach((q) => q.addEventListener("click", () => {
+      state.used = Number(q.dataset.i);
+      detailEl.querySelectorAll("blockquote").forEach((x) => x.classList.toggle("used", x === q));
+    }));
+    detailEl.querySelectorAll(".outcome button").forEach((b) => b.addEventListener("click", () => {
+      logCall(o, list[state.used] || list[0], mode, b.dataset.out);
+    }));
     detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
     detailEl.querySelector(".edit").addEventListener("click", () => openEditor(o.id));
     detailEl.querySelectorAll(".answer").forEach((b) => {
@@ -322,9 +333,9 @@
     });
   }
 
-  function transitionBlock(mode, forced) {
+  function transitionBlock(mode, forced, extra) {
     const t = state.lib.transitions[mode];
-    if (!t.close && !t.assumptive.length) return "";
+    if (!t.close && !t.assumptive.length) return `<div class="transition ${mode}">${extra || ""}</div>`;
     let html = `<div class="transition ${mode}">`;
     html += `<p class="label">Then · ${escapeHtml(t.label)}</p>`;
     if (forced) html += `<p class="coach">Use the ${escapeHtml(modeName(mode))} close for this one, whatever the call type.</p>`;
@@ -335,7 +346,7 @@
       for (const a of t.assumptive) html += `<li>${script(a)}</li>`;
       html += `</ul></details>`;
     }
-    return html + `</div>`;
+    return html + (extra || "") + `</div>`;
   }
 
   function renderEmpty() {
@@ -619,6 +630,134 @@
     commitLibrary();
   }
 
+
+  // -------------------------------------------------------- call outcomes
+  // One tap after a call logs the objection, the rebuttal said, and how it
+  // ended. The log stays in this browser only, newest last, capped at MAX_CALLS.
+  const MAX_CALLS = 2000;
+  const WINS = { inside: "Transferred", field: "Booked" };
+  const OUTCOME_LABEL = { won: "Won", lost: "Lost" };
+  let toastTimer = 0;
+
+  function outcomeBar(mode, several) {
+    return `<div class="outcome" role="group" aria-label="Log how the call ended">
+      <p class="label">How did it end?${several ? ` <span class="hint">Tap the line you said if it wasn't the first.</span>` : ""}</p>
+      <div class="outcome-btns">
+        <button type="button" class="win" data-out="won">${escapeHtml(WINS[mode])}</button>
+        <button type="button" class="lose" data-out="lost">Lost</button>
+      </div></div>`;
+  }
+
+  function logCall(o, r, mode, out) {
+    const entry = { t: Date.now(), id: o.id, title: o.title, line: r ? r.text.slice(0, 80) : "", mode, out };
+    state.calls = [...state.calls, entry].slice(-MAX_CALLS);
+    save("calls", state.calls);
+    newCall();
+    showToast(`${out === "won" ? WINS[mode] : "Lost"} · ${o.title}`, () => {
+      state.calls = state.calls.filter((c) => c !== entry);
+      save("calls", state.calls);
+      if (state.panel === "stats") renderDetail();
+    });
+  }
+
+  function showToast(text, undo) {
+    let el = document.getElementById("toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<span></span>`;
+    el.firstChild.textContent = "Logged: " + text;
+    const u = document.createElement("button");
+    u.type = "button";
+    u.textContent = "Undo";
+    u.addEventListener("click", () => { undo(); el.hidden = true; });
+    el.appendChild(u);
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+
+  const pct = (w, n) => (n ? Math.round((100 * w) / n) + "%" : "–");
+
+  function tally(calls, keyOf) {
+    const m = new Map();
+    for (const c of calls) {
+      const k = keyOf(c);
+      const e = m.get(k) || { n: 0, w: 0, c };
+      e.n++;
+      if (c.out === "won") e.w++;
+      m.set(k, e);
+    }
+    return [...m.values()];
+  }
+
+  function renderStats() {
+    const calls = state.calls;
+    let html = backButton() + `<h2 class="title">Call outcomes</h2>`;
+    if (!calls.length) {
+      detailEl.innerHTML = html + `<p class="muted">Nothing logged yet. After a call, tap how it ended at the bottom of the card and it shows up here. Logs are saved in this browser only.</p>`;
+      return wireBack();
+    }
+    const wins = calls.filter((c) => c.out === "won").length;
+    html += `<p class="muted">${calls.length} call${calls.length === 1 ? "" : "s"} logged, ${wins} won (${pct(wins, calls.length)}). Saved in this browser only.</p>`;
+
+    const byObj = tally(calls, (c) => c.id).sort((a, b) => b.n - a.n).slice(0, 10);
+    html += `<section class="manage-block"><h3>Top objections</h3><table class="stats"><thead><tr><th>Objection</th><th>Heard</th><th>Won</th></tr></thead><tbody>`;
+    for (const e of byObj) html += `<tr><td>${escapeHtml(byId[e.c.id] ? byId[e.c.id].title : e.c.title)}</td><td>${e.n}</td><td>${pct(e.w, e.n)}</td></tr>`;
+    html += `</tbody></table></section>`;
+
+    // Only lines used at least twice on an objection are ranked against each other.
+    const lines = tally(calls, (c) => c.id + "\u0000" + c.line).filter((e) => e.n >= 2 && e.c.line)
+      .sort((a, b) => b.w / b.n - a.w / a.n || b.n - a.n).slice(0, 10);
+    html += `<section class="manage-block"><h3>Which rebuttals convert</h3>`;
+    if (!lines.length) html += `<p class="sub">Needs a line used on at least two calls before it shows a rate.</p>`;
+    else {
+      html += `<table class="stats"><thead><tr><th>Rebuttal</th><th>Used</th><th>Won</th></tr></thead><tbody>`;
+      for (const e of lines) {
+        const title = byId[e.c.id] ? byId[e.c.id].title : e.c.title;
+        html += `<tr><td><strong>${escapeHtml(title)}</strong><br><span class="sub">${escapeHtml(e.c.line)}…</span></td><td>${e.n}</td><td>${pct(e.w, e.n)}</td></tr>`;
+      }
+      html += `</tbody></table>`;
+    }
+    html += `</section>`;
+
+    html += `<section class="manage-block"><h3>Your log</h3><div class="form-actions">
+      <button type="button" class="ghost" id="calls-csv">Save as CSV</button>
+      <button type="button" class="ghost danger" id="calls-clear">Clear log</button></div></section>`;
+    detailEl.innerHTML = html;
+    detailEl.scrollTop = 0;
+    wireBack();
+    detailEl.querySelector("#calls-csv").addEventListener("click", () => {
+      const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+      const rows = ["time,objection,rebuttal,call type,outcome", ...calls.map((c) =>
+        [new Date(c.t).toISOString(), q(c.title), q(c.line), q((state.lib.modes[c.mode] || {}).name || c.mode), c.out].join(","))];
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
+      a.download = "call-outcomes.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    const clear = detailEl.querySelector("#calls-clear");
+    confirmClick(clear, "Really clear?", () => {
+      state.calls = [];
+      remove("calls");
+      renderStats();
+    });
+  }
+
+  function openStats() {
+    state.panel = "stats";
+    if (narrow.matches) {
+      document.body.dataset.view = "detail";
+      window.scrollTo(0, 0);
+    }
+    renderList();
+    renderDetail();
+  }
+
   // ------------------------------------------------------------- chrome
   function renderMode() {
     modeButtons.forEach((b) => {
@@ -632,6 +771,7 @@
   // ------------------------------------------------------------ actions
   // keep: true when the rep committed to this objection (click, Enter, number key).
   function open(id, keep) {
+    if (id !== state.openId) state.used = 0;
     state.openId = id;
     state.panel = "card";
     if (keep) {
@@ -704,6 +844,7 @@
     renderDetail();
   }
   document.getElementById("manage").addEventListener("click", openManage);
+  document.getElementById("stats").addEventListener("click", openStats);
 
   searchEl.addEventListener("input", () => {
     if (narrow.matches) document.body.dataset.view = "list";
