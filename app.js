@@ -7,11 +7,14 @@
     "think-about-it", "not-right-time", "competitor", "how-did-you-get-my-number",
   ];
   const MODES = ["inside", "field"];
+  const DEPTHS = ["full", "cue", "close"];
+  const DEPTH_NAMES = { full: "Full", cue: "Cue", close: "Close" };
 
   const searchEl = document.getElementById("search");
   const listEl = document.getElementById("list");
   const detailEl = document.getElementById("detail");
   const modeButtons = document.querySelectorAll(".mode button");
+  const depthButtons = document.querySelectorAll(".depth button");
   const narrow = window.matchMedia("(max-width: 800px)");
 
   // ------------------------------------------------------------ storage
@@ -72,6 +75,7 @@
         rebuttals,
       };
       if (str(o.note)) item.note = str(o.note);
+      if (str(o.cue)) item.cue = str(o.cue);
       if (MODES.includes(o.forceMode)) item.forceMode = o.forceMode;
       if (o.custom) item.custom = true;
       if (o.probe && str(o.probe.ask) && Array.isArray(o.probe.answers)) {
@@ -107,6 +111,7 @@
   const state = {
     lib: loadLibrary(),
     mode: load("mode") || "inside",
+    depth: DEPTHS.includes(load("depth")) ? load("depth") : "full", // how much of a card to show
     query: "",
     openId: null,   // objection shown in the detail panel
     panel: "card",  // "card", "edit", "manage" or "stats"
@@ -184,6 +189,13 @@
     return escapeHtml(s).replace(/\[([^\]]+)\]/g, '<mark class="blank">$1</mark>');
   }
   const modeName = (m) => state.lib.modes[m].name;
+  // The one-liner for cue view: the card's own cue, else the opening sentence of the rebuttal.
+  function cueFor(o, rebuttal) {
+    if (o.cue) return o.cue;
+    const text = rebuttal.text.replace(/\s+/g, " ");
+    const first = (text.match(/^.*?[.!?](?=\s|$)/) || [text])[0];
+    return first.length > 110 ? first.slice(0, 107).replace(/\s+\S*$/, "") + "…" : first;
+  }
 
   // Destructive buttons ask for a second click instead of a dialog.
   function confirmClick(button, label, action) {
@@ -237,7 +249,7 @@
         listEl.appendChild(addButton());
         return;
       }
-      section("Matches", state.matches, (o, i) => ({ cursor: i === state.cursor }));
+      section("Matches", state.matches, (o, i) => ({ cursor: i === state.cursor, key: i < MAX_PINS ? "⌥" + (i + 1) : null }));
       return;
     }
 
@@ -289,7 +301,24 @@
     html += `<div class="detail-head"><h2 class="title">${escapeHtml(o.title)}</h2>`;
     html += `<div class="head-actions"><button type="button" class="pin ghost" aria-pressed="${pinned}">${pinned ? "★ Pinned" : "☆ Pin"}</button>`;
     html += `<button type="button" class="edit ghost">Edit</button></div></div>`;
+    if (state.depth === "close") {
+      detailEl.innerHTML = html + transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, false));
+      detailEl.scrollTop = 0;
+      wireBack();
+      wireHead(o);
+      wireOutcome(o, list, mode);
+      return;
+    }
     if (o.custom) html += `<p class="sub">Your own wording, not from the official script.</p>`;
+    if (state.depth === "cue") {
+      html += `<blockquote class="primary"><p class="label">Cue</p><p class="line">${script(cueFor(o, list[0]))}</p></blockquote>`;
+      detailEl.innerHTML = html + transitionBlock(mode, o.forceMode && o.forceMode !== state.mode, outcomeBar(mode, false));
+      detailEl.scrollTop = 0;
+      wireBack();
+      wireHead(o);
+      wireOutcome(o, list, mode);
+      return;
+    }
     if (o.note) html += `<p class="callout">${escapeHtml(o.note)}</p>`;
     if (!fits.length) html += `<p class="callout">Written for ${escapeHtml(modeName(otherMode))} calls. Adapt the wording, or switch the call type.</p>`;
 
@@ -314,15 +343,12 @@
     detailEl.innerHTML = html;
     detailEl.scrollTop = 0;
     wireBack();
+    wireHead(o);
+    wireOutcome(o, list, mode);
     detailEl.querySelectorAll("blockquote").forEach((q) => q.addEventListener("click", () => {
       state.used = Number(q.dataset.i);
       detailEl.querySelectorAll("blockquote").forEach((x) => x.classList.toggle("used", x === q));
     }));
-    detailEl.querySelectorAll(".outcome button").forEach((b) => b.addEventListener("click", () => {
-      logCall(o, list[state.used] || list[0], mode, b.dataset.out);
-    }));
-    detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
-    detailEl.querySelector(".edit").addEventListener("click", () => openEditor(o.id));
     detailEl.querySelectorAll(".answer").forEach((b) => {
       b.addEventListener("click", () => {
         const a = o.probe.answers[Number(b.dataset.i)];
@@ -331,6 +357,17 @@
           `<p class="line">${script(a.text)}</p>` + (a.coach ? `<p class="coach">${escapeHtml(a.coach)}</p>` : "");
       });
     });
+  }
+
+  function wireHead(o) {
+    detailEl.querySelector(".pin").addEventListener("click", () => togglePin(o.id));
+    detailEl.querySelector(".edit").addEventListener("click", () => openEditor(o.id));
+  }
+
+  function wireOutcome(o, list, mode) {
+    detailEl.querySelectorAll(".outcome button").forEach((b) => b.addEventListener("click", () => {
+      logCall(o, list[state.used] || list[0], mode, b.dataset.out);
+    }));
   }
 
   function transitionBlock(mode, forced, extra) {
@@ -390,6 +427,7 @@
       <label>Section<input id="f-group" list="groups" value="${escapeHtml(d.group)}"></label>
       <datalist id="groups">${state.lib.groups.map((g) => `<option value="${escapeHtml(g)}">`).join("")}</datalist>
       <label>Search words <span class="hint">comma separated</span><input id="f-keywords" value="${escapeHtml(d.keywords.join(", "))}" placeholder="think, consider, decide"></label>
+      <label>One-line cue <span class="hint">optional, shown in Cue view. Leave blank to use the start of the first rebuttal.</span><input id="f-cue" value="${escapeHtml(d.cue || "")}" maxlength="140"></label>
       <label>Reminder <span class="hint">optional, shown above the rebuttals</span><input id="f-note" value="${escapeHtml(d.note || "")}"></label>
       <fieldset><legend>Rebuttals <span class="hint">the first one is "Say this". Use [brackets] for blanks.</span></legend>`;
     d.rebuttals.forEach((r, i) => {
@@ -441,6 +479,7 @@
     draft.group = v("f-group").trim() || "Other";
     draft.keywords = v("f-keywords").split(",").map((s) => s.trim()).filter(Boolean);
     draft.note = v("f-note").trim();
+    draft.cue = v("f-cue").trim();
     draft.rebuttals = draft.rebuttals.map((r, i) => {
       const out = { text: v("f-r-" + i).trim() };
       const mode = v("f-rm-" + i);
@@ -461,6 +500,7 @@
     const item = clone(draft);
     item.rebuttals = item.rebuttals.filter((r) => r.text);
     if (!item.note) delete item.note;
+    if (!item.cue) delete item.cue;
     const lib = state.lib;
     if (item.id) {
       lib.objections = lib.objections.map((o) => (o.id === item.id ? item : o));
@@ -768,6 +808,11 @@
     document.body.dataset.mode = state.mode;
   }
 
+  function renderDepth() {
+    depthButtons.forEach((b) => b.setAttribute("aria-checked", String(b.dataset.depth === state.depth)));
+    document.body.dataset.depth = state.depth;
+  }
+
   // ------------------------------------------------------------ actions
   // keep: true when the rep committed to this objection (click, Enter, number key).
   function open(id, keep) {
@@ -832,7 +877,15 @@
     if (state.panel === "card") renderDetail();
   }
 
+  function setDepth(depth) {
+    state.depth = depth;
+    save("depth", depth);
+    renderDepth();
+    if (state.panel === "card") renderDetail();
+  }
+
   modeButtons.forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  depthButtons.forEach((b) => b.addEventListener("click", () => setDepth(b.dataset.depth)));
   document.getElementById("new-call").addEventListener("click", newCall);
   function openManage() {
     state.panel = "manage";
@@ -859,7 +912,22 @@
   const isDigitKey = (e) => /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey;
   const typingInForm = (el) => el && el !== searchEl && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
 
+  // Alt shortcuts work from anywhere, including the search box. They use the physical
+  // key (e.code) because Alt+letter types a different character on a Mac.
+  function altShortcut(e) {
+    if (!e.altKey || e.ctrlKey || e.metaKey) return false;
+    if (e.code === "KeyV") setDepth(DEPTHS[(DEPTHS.indexOf(state.depth) + 1) % DEPTHS.length]);
+    else if (e.code === "KeyT") setMode(state.mode === "inside" ? "field" : "inside");
+    else if (state.query && /^Digit[1-9]$/.test(e.code) && state.matches[Number(e.code.slice(5)) - 1]) {
+      open(state.matches[Number(e.code.slice(5)) - 1].id, true);
+      searchEl.select();
+    } else return false;
+    e.preventDefault();
+    return true;
+  }
+
   searchEl.addEventListener("keydown", (e) => {
+    if (altShortcut(e)) return;
     // A digit typed into an empty search box opens that quick pick.
     if (!searchEl.value && isDigitKey(e)) {
       if (quickPick(e.key)) e.preventDefault();
@@ -892,7 +960,15 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.target === searchEl || typingInForm(e.target)) return;
+    if (e.target === searchEl) return;
+    if (altShortcut(e)) return;
+    if (typingInForm(e.target)) return;
+    // Type anywhere: a letter on the card view starts a search, no need to click first.
+    if (state.panel === "card" && e.key.length === 1 && /[^\s/\d]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      searchEl.focus();
+      searchEl.select();
+      return; // the keystroke lands in the search box
+    }
     if (e.key === "/") {
       e.preventDefault();
       searchEl.focus();
@@ -906,6 +982,7 @@
 
   rebuild();
   renderMode();
+  renderDepth();
   renderList();
   renderDetail();
 })();

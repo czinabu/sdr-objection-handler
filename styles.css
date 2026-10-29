@@ -126,6 +126,22 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 .mode button[data-mode="field"][aria-checked="true"] { background: var(--field); color: var(--on-mode); }
 .mode button[aria-checked="true"] span { color: inherit; opacity: 0.85; }
 
+.depth { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.depth button {
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.depth button[aria-checked="true"] { background: var(--text); color: var(--surface); }
+
+/* Close view: the close is the whole card, so make it big. */
+body[data-depth="close"] .detail > .transition .line { font-size: 24px; }
+body[data-depth="close"] .detail > .transition { position: static; margin-bottom: 0; box-shadow: none; }
+body[data-depth="cue"] .detail > .transition { position: static; margin-bottom: 0; box-shadow: none; }
+
 #search {
   width: 100%;
   font: inherit;
@@ -401,6 +417,7 @@ table.stats th:not(:first-child), table.stats td:not(:first-child) { width: 56px
   .topbar-inner { gap: 8px; }
   .topbar-inner h1 { display: none; }
   .mode { margin-right: auto; }
+  .depth button { padding: 6px 8px; }
   .mode button { padding: 6px 10px; }
   .mode button span { display: none; }
   .topbar-inner .ghost { padding: 6px 10px; }
